@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Knowledge Graph</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#06060f;overflow:hidden;font-family:'PingFang SC','Microsoft YaHei',-apple-system,sans-serif}
+
+#container{position:fixed;inset:0}
+#container canvas{display:block}
+
+/* ── Glass overlays ── */
+.overlay{
+  position:fixed;z-index:10;
+  background:rgba(8,8,24,.75);
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:14px;
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+  color:#cbd5e0;
+  pointer-events:auto;
+}
+
+#left-panel{
+  position:fixed;z-index:10;top:20px;left:20px;
+  display:flex;flex-direction:column;gap:6px;
+  background:rgba(8,8,24,.75);
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:14px;
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+  padding:12px;min-width:200px;
+  pointer-events:auto;
+  color:#cbd5e0;
+}
+
+#legend{padding:4px 8px;background:none;border:none;position:static}
+#legend h3{font-size:10px;font-weight:600;opacity:.35;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px}
+.leg-item{display:flex;align-items:center;gap:10px;font-size:11px;padding:3px 0}
+.leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;box-shadow:0 0 8px currentColor}
+
+#search{padding:0;background:none;border:none;position:static}
+#search input{
+  background:rgba(8,8,24,.8);border:1px solid rgba(255,255,255,.08);
+  border-radius:12px;padding:10px 18px;color:#e0e0e0;font-size:13px;
+  width:100%;outline:none;transition:border .3s
+}
+#search input:focus{border-color:rgba(255,255,255,.25)}
+#search input::placeholder{color:rgba(255,255,255,.18)}
+
+#back-btn{
+  top:20px;right:20px;padding:10px 18px;
+  cursor:pointer;font-size:13px;font-weight:600;
+  color:#a78bfa;text-decoration:none;transition:all .2s;
+  display:flex;align-items:center;gap:6px;
+}
+#back-btn:hover{color:#c4b5fd;background:rgba(139,92,246,.1)}
+
+#reset-btn{
+  padding:10px 18px;
+  cursor:pointer;font-size:13px;font-weight:600;
+  color:#94a3b8;transition:all .2s;
+  display:flex;align-items:center;gap:6px;
+  user-select:none;
+  background:rgba(8,8,24,.8);border:1px solid rgba(255,255,255,.08);
+  border-radius:12px;
+}
+#reset-btn:hover{color:#cbd5e0;background:rgba(148,163,184,.15)}
+
+#hint{
+  top:50%;left:50%;transform:translate(-50%,-50%);
+  font-size:11px;opacity:.3;pointer-events:none;
+  transition:opacity .8s;
+}
+
+#stats{bottom:24px;left:50%;transform:translateX(-50%);padding:10px 24px;font-size:12px;display:flex;gap:20px;white-space:nowrap}
+#stats span{opacity:.5}
+#stats .val{opacity:.9;font-weight:600}
+
+#tooltip{
+  position:fixed;z-index:20;pointer-events:none;opacity:0;
+  padding:14px 18px;max-width:300px;
+  background:rgba(8,8,24,.94);border:1px solid rgba(255,255,255,.12);
+  border-radius:12px;font-size:13px;line-height:1.7;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+  transition:opacity .15s;
+}
+#tooltip .tt-title{font-weight:700;font-size:15px;margin-bottom:2px}
+#tooltip .tt-meta{font-size:11px;opacity:.45;margin-bottom:6px}
+#tooltip .tt-summary{font-size:12px;opacity:.75;line-height:1.5}
+#tooltip .tt-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.tt-tag{padding:2px 8px;border-radius:8px;font-size:10px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.5)}
+
+/* Right detail panel */
+#detail-panel{
+  position:fixed;z-index:20;top:0;right:-440px;width:440px;height:100vh;
+  background:rgba(8,8,24,.97);border-left:1px solid rgba(255,255,255,.08);
+  padding:28px 24px;overflow-y:auto;
+  transition:right .35s cubic-bezier(.4,0,.2,1), opacity .2s ease;
+  color:#cbd5e0;font-size:13px;line-height:1.7;
+}
+#detail-panel.active{right:0}
+#detail-panel .panel-close{
+  position:absolute;top:20px;right:20px;
+  width:32px;height:32px;display:flex;align-items:center;justify-content:center;
+  border-radius:8px;font-size:16px;cursor:pointer;
+  color:rgba(255,255,255,.4);background:rgba(255,255,255,.04);
+  transition:all .2s;
+}
+#detail-panel .panel-close:hover{color:#fff;background:rgba(255,255,255,.1)}
+#detail-panel .panel-section{margin-bottom:20px}
+#detail-panel .panel-section h3{font-size:10px;font-weight:600;opacity:.35;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px}
+#detail-panel .panel-name{font-size:18px;font-weight:700;margin-bottom:4px}
+#detail-panel .panel-meta{font-size:12px;opacity:.45;margin-bottom:12px}
+#detail-panel .panel-summary{font-size:13px;opacity:.75;line-height:1.6}
+#detail-panel .panel-tags{display:flex;flex-wrap:wrap;gap:6px}
+#detail-panel .panel-tag{padding:3px 10px;border-radius:8px;font-size:11px;background:rgba(255,255,255,.04);color:rgba(255,255,255,.5)}
+#detail-panel .panel-link-item{
+  display:flex;align-items:center;gap:8px;padding:6px 10px;
+  border-radius:8px;cursor:pointer;transition:background .15s;
+  font-size:12px;
+}
+#detail-panel .panel-link-item:hover{background:rgba(255,255,255,.06)}
+#detail-panel .panel-link-item .panel-link-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+#detail-panel .panel-link-name{opacity:.8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#detail-panel .panel-empty{opacity:.4;font-size:12px;padding:8px 10px}
+#detail-panel .panel-md{font-size:12px;line-height:1.8;opacity:.7}
+#detail-panel .panel-md h1,#detail-panel .panel-md h2,#detail-panel .panel-md h3{opacity:.8;margin:10px 0 6px}
+#detail-panel .panel-md h1{font-size:15px}#detail-panel .panel-md h2{font-size:13px}#detail-panel .panel-md h3{font-size:12px}
+#detail-panel .panel-md .wikilink{color:#a78bfa;text-decoration:none}
+#detail-panel .panel-loading{opacity:.3;font-size:12px}
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="container"></div>
+
+<!-- Left panel -->
+<div id="left-panel">
+  <div id="legend"><h3>分类</h3></div>
+  <div id="search"><input id="search-input" type="text" placeholder="搜索节点..."></div>
+  <div id="reset-btn">🔄 重置视角</div>
+</div>
+
+<!-- Back to product hub -->
+<a id="back-btn" class="overlay" href="product-hub.html">← 返回</a>
+
+<!-- Hint -->
+<div id="hint" class="overlay">拖拽旋转 · 滚轮缩放 · 右键平移 · 点击节点查看详情</div>
+
+<!-- Stats -->
+<div id="stats" class="overlay">
+  <span>节点 <strong class="val" id="stat-nodes">-</strong></span>
+  <span>连线 <strong class="val" id="stat-links">-</strong></span>
+  <span>分类 <strong class="val" id="stat-clusters">-</strong></span>
+</div>
+
+<!-- Tooltip -->
+<div id="tooltip"></div>
+
+<!-- Detail panel -->
+<div id="detail-panel">
+  <div class="panel-close" id="panel-close-inner">✕</div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+// ── Color palette (loaded from /api/config, with defaults) ──
+let COLORS = {};
+let CLUSTER_Z = {};
+const DEFAULT_COLOR = '#94a3b8';
+
+// Load dynamic config from API
+(async () => {
+  try {
+    const r = await fetch('/api/config');
+    const cfg = await r.json();
+    if (cfg.categories) {
+      cfg.categories.forEach((c, i) => {
+        COLORS[c.dir] = c.color;
+        // Spread clusters along Z axis by category order
+        CLUSTER_Z[c.dir] = (i - cfg.categories.length/2) * 2.0;
+      });
+    }
+  } catch(e) {
+    // Fallback defaults
+    COLORS = {
+      '运动表现产品': '#FF6B6B',
+      '三叶草产品': '#FFB347',
+      '轻运动产品': '#4ECDC4',
+      '科技': '#DDA0DD',
+      '系列': '#BB8FCE',
+    };
+    CLUSTER_Z = {
+      '运动表现产品': 3.5, '三叶草产品': -2.5, '轻运动产品': 4.5,
+      '科技': -3.5, '系列': -2
+    };
+  }
+  if (typeof initGraph === 'function') initGraph();
+})();
+
+// ── Three.js setup ──
+const container = document.getElementById('container');
+const W = container.clientWidth, H = container.clientHeight;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#06060f');
+scene.fog = new THREE.FogExp2('#06060f', 0.00008);
+
+const camera = new THREE.PerspectiveCamera(55, W/H, 0.5, 120);
+camera.position.set(30, 5, 0);  // side view, slightly further back
+
+const renderer = new THREE.WebGLRenderer({antialias:true, powerPreference:'high-performance'});
+renderer.setSize(W, H);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+container.appendChild(renderer.domElement);
+
+// ── Bloom ──
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(W,H), 1.2, 0.3, 0.5);
+composer.addPass(bloomPass);
+
+// ── Orbit controls ──
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.25;
+controls.minDistance = 6;
+controls.maxDistance = 60;
+controls.target.set(0, 0, 0);
+controls.update();
+
+// ── Lighting ──
+scene.add(new THREE.AmbientLight('#404060', 1.5));
+const dirLight = new THREE.DirectionalLight('#ffffff', 2);
+dirLight.position.set(10, 15, 20);
+scene.add(dirLight);
+
+// ── Starfield ──
+const starGeo = new THREE.BufferGeometry();
+const starCount = 2500;
+const starPos = new Float32Array(starCount * 3);
+for (let i=0; i<starCount; i++) {
+  const theta = Math.random() * Math.PI * 2;
+  const phi = Math.acos(2 * Math.random() - 1);
+  const r = 35 + Math.random() * 30;
+  starPos[i*3] = r * Math.sin(phi) * Math.cos(theta);
+  starPos[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+  starPos[i*3+2] = r * Math.cos(phi);
+}
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+const starMat = new THREE.PointsMaterial({color:'#ffffff', size:0.06, transparent:true, opacity:0.7, blending:THREE.AdditiveBlending, depthWrite:false});
+const stars = new THREE.Points(starGeo, starMat);
+scene.add(stars);
+
+// ── State ──
+let NODES = [], LINKS = [];
+let sphereIM = null, icoIM = null;          // InstancedMesh for spheres and icosahedrons
+let sphereNodes = [], icoNodes = [];        // parallel arrays mapping instanceIndex → node
+let edgeSegments = null;                     // single LineSegments for all edges
+let edgeParticles = null;
+let particleData = [];
+let selectedId = null;
+let hoveredId = null;
+let nodeMapByType = {};  // { 'sphere': {nodeId→instanceIndex}, 'ico': {nodeId→instanceIndex} }
+let allValidLinks = [];  // full edge data for rebuilding on selection
+
+// ── Camera animation ──
+let camAnim = null;
+let searchBestNode = null;  // best-matching node during search (for pulsing)
+
+// ── Raycaster ──
+const raycaster = new THREE.Raycaster();
+raycaster.params.Points.threshold = 0.4;
+const mouse = new THREE.Vector2();
+
+// ── Helpers ──
+function hexToThree(hex) { return new THREE.Color(hex); }
+
+// ── Build legend ──
+function buildLegend(clusters) {
+  const el = document.getElementById('legend');
+  const h3 = el.querySelector('h3');
+  el.innerHTML = '';
+  el.appendChild(h3);
+  clusters.forEach(([name, color]) => {
+    const div = document.createElement('div');
+    div.className = 'leg-item';
+    div.innerHTML = `<div class="leg-dot" style="background:${color};color:${color}"></div>${name}`;
+    el.appendChild(div);
+  });
+}
+
+// ── Get color for node ──
+function nodeColor(node) {
+  return COLORS[node.subcat] || DEFAULT_COLOR;
+}
+
+// ── Get geometry type for node ──
+function geomType(node) {
+  // Products → sphere; concepts (科技, 系列) → icosahedron
+  return ['运动表现产品','三叶草产品','轻运动产品'].includes(node.category) ? 'sphere' : 'ico';
+}
+
+// ── Edge geometry rebuild (for highlight: show only connected edges) ──
+function rebuildEdgeGeometry(connected) {
+  if (!edgeSegments || allValidLinks.length === 0) return;
+
+  const filtered = selectedId
+    ? allValidLinks.filter(l => {
+        const sid = l.src.id, tid = l.tgt.id;
+        return connected.has(sid) && connected.has(tid);
+      })
+    : allValidLinks;
+
+  const count = filtered.length;
+  // Reuse existing geometry if size matches, otherwise create new
+  const needNew = !edgeSegments.geometry.attributes.position
+    || edgeSegments.geometry.attributes.position.count !== count * 2;
+
+  if (count === 0) {
+    edgeSegments.visible = false;
+    return;
+  }
+  edgeSegments.visible = true;
+
+  const positions = needNew
+    ? new Float32Array(count * 6)
+    : edgeSegments.geometry.attributes.position.array;
+  const colors = needNew
+    ? new Float32Array(count * 6)
+    : edgeSegments.geometry.attributes.color.array;
+
+  const bc = new THREE.Color();
+  for (let i = 0; i < count; i++) {
+    const { src, tgt } = filtered[i];
+    const pi = i * 6;
+    positions[pi] = src._x; positions[pi+1] = src._y; positions[pi+2] = src._z;
+    positions[pi+3] = tgt._x; positions[pi+4] = tgt._y; positions[pi+5] = tgt._z;
+    bc.set(nodeColor(src));
+    colors[pi] = bc.r; colors[pi+1] = bc.g; colors[pi+2] = bc.b;
+    colors[pi+3] = bc.r; colors[pi+4] = bc.g; colors[pi+5] = bc.b;
+  }
+
+  if (needNew) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    edgeSegments.geometry.dispose();
+    edgeSegments.geometry = geo;
+  } else {
+    edgeSegments.geometry.attributes.position.needsUpdate = true;
+    edgeSegments.geometry.attributes.color.needsUpdate = true;
+    edgeSegments.geometry.setDrawRange(0, count * 2);
+  }
+  edgeSegments.material.opacity = 0.18;
+}
+
+// ── Edge particles rebuild ──
+function rebuildEdgeParticles(connected) {
+  if (!edgeParticles || allValidLinks.length === 0) return;
+
+  const filtered = selectedId
+    ? allValidLinks.filter(l => {
+        const sid = l.src.id, tid = l.tgt.id;
+        return connected.has(sid) && connected.has(tid);
+      })
+    : allValidLinks;
+
+  const count = filtered.length;
+  if (count === 0) {
+    edgeParticles.visible = false;
+    return;
+  }
+  edgeParticles.visible = true;
+
+  // Resize position buffer
+  const partCount = count * 3;
+  const pos = new Float32Array(partCount * 3);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  edgeParticles.geometry.dispose();
+  edgeParticles.geometry = geo;
+
+  // Rebuild particle data
+  particleData = [];
+  for (let i = 0; i < count; i++) {
+    for (let p = 0; p < 3; p++) {
+      particleData.push({
+        edgeIdx: i,
+        t: Math.random(),
+        speed: 0.001 + Math.random() * 0.004,
+      });
+    }
+  }
+  // Replace the filtered reference in closure via a module-level tracker
+  _visibleLinks = filtered;
+}
+
+let _visibleLinks = null;  // current visible links for particle animation
+
+// ── Update instanced colors (for highlight/dim) ──
+// When a node is selected: HIDE unrelated nodes (scale=0) and unrelated edges entirely.
+// When deselected: restore all.
+nodeMapByType = { sphere: {}, ico: {} };
+
+// Update the scale of a single instanced node (e.g. for search pulse)
+function updateNodeScale(node, scale) {
+  let idx = nodeMapByType.sphere[node.id];
+  let im = sphereIM;
+  if (idx === undefined) {
+    idx = nodeMapByType.ico[node.id];
+    im = icoIM;
+  }
+  if (idx === undefined || !im) return;
+  const d = new THREE.Object3D();
+  d.position.set(node._x, node._y, node._z);
+  d.scale.setScalar(scale);
+  d.updateMatrix();
+  im.setMatrixAt(idx, d.matrix);
+  im.instanceMatrix.needsUpdate = true;
+}
+
+function applyHighlight() {
+  const connected = new Set();
+  if (selectedId) {
+    connected.add(selectedId);
+    LINKS.forEach(l => {
+      const sid = l.source.id || l.source;
+      const tid = l.target.id || l.target;
+      if (sid === selectedId) connected.add(tid);
+      if (tid === selectedId) connected.add(sid);
+    });
+  }
+
+  const dummy = new THREE.Object3D();
+
+  function updateIM(im, nodeList) {
+    const color = new THREE.Color();
+    for (let i = 0; i < nodeList.length; i++) {
+      const n = nodeList[i];
+      const baseHex = nodeColor(n);
+      if (!selectedId) {
+        // Reset: full color, scale=1
+        color.set(baseHex);
+        im.setColorAt(i, color);
+        dummy.scale.setScalar(1);
+        dummy.position.set(n._x, n._y, n._z);
+        dummy.updateMatrix();
+        im.setMatrixAt(i, dummy.matrix);
+      } else if (n.id === selectedId) {
+        // Selected: bright, scale=1.4
+        color.set(baseHex).multiplyScalar(1.8);
+        im.setColorAt(i, color);
+        dummy.scale.setScalar(1.4);
+        dummy.position.set(n._x, n._y, n._z);
+        dummy.updateMatrix();
+        im.setMatrixAt(i, dummy.matrix);
+      } else if (connected.has(n.id)) {
+        // Connected: normal color, scale=1
+        color.set(baseHex);
+        im.setColorAt(i, color);
+        dummy.scale.setScalar(1);
+        dummy.position.set(n._x, n._y, n._z);
+        dummy.updateMatrix();
+        im.setMatrixAt(i, dummy.matrix);
+      } else {
+        // Unrelated: HIDE (scale=0)
+        dummy.scale.setScalar(0);
+        dummy.updateMatrix();
+        im.setMatrixAt(i, dummy.matrix);
+      }
+    }
+    im.instanceColor.needsUpdate = true;
+    im.instanceMatrix.needsUpdate = true;
+  }
+
+  if (sphereIM) updateIM(sphereIM, sphereNodes);
+  if (icoIM) updateIM(icoIM, icoNodes);
+
+  // ── Edge filtering: rebuild geometry to show only relevant edges ──
+  rebuildEdgeGeometry(connected);
+  rebuildEdgeParticles(connected);
+}
+
+// ── Simple markdown renderer ──
+function renderMd(md) {
+  let body = md;
+  if (md.startsWith('---')) {
+    const end = md.indexOf('---', 3);
+    if (end > 0) body = md.slice(end + 3);
+  }
+  body = body.replace(/\[\[([^\]]+)\]\]/g, (m, ref) => {
+    const p = ref.split('|');
+    return '<span class="wikilink">' + (p.length > 1 ? p[1] : p[0]) + '</span>';
+  });
+  try {
+    if (typeof marked !== 'undefined' && marked.parse) return marked.parse(body);
+  } catch(e) {}
+  let h = body;
+  h = h.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  h = h.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  h = h.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  h = h.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
+  h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  h = h.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
+  h = h.replace(/^- (.+)$/gm, '<li>$1</li>');
+  h = h.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+  h = h.replace(/\n\n/g, '</p><p>');
+  h = '<p>' + h + '</p>';
+  return h.replace(/<p>\s*<\/p>/g, '');
+}
+
+// ── Detail panel ──
+function showDetail(node) {
+  const panel = document.getElementById('detail-panel');
+  if (!node) { closePanel(); return; }
+
+  const tags = node.tags || [];
+  const tagChips = tags.length ? tags.map(t => {
+    let label = t;
+    if (t.includes('/')) { const parts = t.split('/'); label = parts[parts.length - 1]; }
+    return `<span class="panel-tag">🏷️ ${label}</span>`;
+  }).join('') : '';
+
+  const seenIds = new Set();
+  const connected = [];
+  for (const l of LINKS) {
+    const sId = typeof l.source === 'object' ? l.source.id || l.source : l.source;
+    const tId = typeof l.target === 'object' ? l.target.id || l.target : l.target;
+    if (sId === node.id || tId === node.id) {
+      const otherId = sId === node.id ? tId : sId;
+      if (!seenIds.has(otherId)) {
+        seenIds.add(otherId);
+        const n = NODES.find(n => n.id === otherId);
+        if (n) connected.push(n);
+      }
+    }
+  }
+  // Sort: concept nodes (科技/系列) first, then products
+  connected.sort((a, b) => {
+    const aConcept = a.category === '科技' || a.category === '系列';
+    const bConcept = b.category === '科技' || b.category === '系列';
+    if (aConcept && !bConcept) return -1;
+    if (!aConcept && bConcept) return 1;
+    return 0;
+  });
+  const totalConnected = connected.length;
+  const displayConnected = connected.slice(0, 15);
+  const hasMore = totalConnected > 15;
+
+  const connectedHtml = displayConnected.length
+    ? displayConnected.map(c => {
+        const dotColor = COLORS[c.subcat] || DEFAULT_COLOR;
+        const icon = ['运动表现产品','三叶草产品','轻运动产品'].includes(c.category) ? '📦' : '🏷️';
+        return `<div class="panel-link-item" data-id="${c.id}">
+          <div class="panel-link-dot" style="background:${dotColor}"></div>
+          <span class="panel-link-name">${icon} ${c.title}</span>
+        </div>`;
+      }).join('')
+    : '<div class="panel-empty">无关联页面</div>';
+
+  const moreHint = hasMore
+    ? `<div class="panel-empty" style="margin-top:8px">... 还有 ${totalConnected - 15} 个关联节点（完整关系见 3D 图谱）</div>`
+    : '';
+
+  const icon = ['运动表现产品','三叶草产品','轻运动产品'].includes(node.category) ? '📦' : '🏷️';
+
+  panel.innerHTML = `
+    <div class="panel-close" id="panel-close-inner">✕</div>
+    <div class="panel-section">
+      <div class="panel-name">${icon} ${node.title}</div>
+      <div class="panel-meta">${node.category} · ${node.subcat}</div>
+    </div>
+    ${node.summary ? `<div class="panel-section"><h3>摘要</h3><div class="panel-summary">${node.summary}</div></div>` : ''}
+    ${tags.length ? `<div class="panel-section"><h3>标签 (${tags.length})</h3><div class="panel-tags">${tagChips}</div></div>` : ''}
+    <div class="panel-section"><h3>关联节点 (${totalConnected})</h3><div id="panel-links">${connectedHtml}${moreHint}</div></div>
+    <div class="panel-section"><h3>📄 页面内容</h3><div id="panel-content"><div class="panel-loading">加载中...</div></div></div>
+  `;
+
+  panel.classList.add('active');
+
+  document.getElementById('panel-close-inner').addEventListener('click', (e) => {
+    e.stopPropagation();
+    closePanel();
+  });
+
+  panel.querySelectorAll('.panel-link-item').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const nid = el.dataset.id;
+      const nd = NODES.find(n => n.id === nid);
+      if (nd) {
+        selectedId = nid;
+        // Animate camera to node
+        const pos = new THREE.Vector3(nd._x, nd._y, nd._z);
+        const dir = camera.position.clone().sub(pos).normalize();
+        const toCamPos = pos.clone().add(dir.multiplyScalar(8));
+        camAnim = {
+          fromTarget: controls.target.clone(),
+          toTarget: pos,
+          fromCamPos: camera.position.clone(),
+          toCamPos: toCamPos,
+          startTime: performance.now(),
+          duration: 800
+        };
+        applyHighlight();
+        controls.autoRotate = false;
+        panel.style.opacity = '0.6';
+        requestAnimationFrame(() => {
+          showDetail(nd);
+          panel.style.opacity = '1';
+          panel.scrollTop = 0;
+          setTimeout(() => applyHighlight(), 50);
+        });
+      }
+    });
+  });
+
+  // Fetch .md content
+  const mdPath = node.id + '.md';
+  fetch(mdPath + '?v=' + Date.now())
+    .then(r => { if (!r.ok) throw new Error('Not found'); return r.text(); })
+    .then(md => {
+      const el = document.getElementById('panel-content');
+      if (!el) return;
+      el.innerHTML = '<div class="panel-md">' + renderMd(md) + '</div>';
+    })
+    .catch(() => {
+      const el = document.getElementById('panel-content');
+      if (!el) return;
+      el.innerHTML = '<div class="panel-loading">页面文件未找到 (' + node.id + '.md)</div>';
+    });
+}
+
+function closePanel() {
+  selectedId = null;
+  controls.autoRotate = true;
+  const panel = document.getElementById('detail-panel');
+  panel.style.opacity = '1';
+  panel.classList.remove('active');
+  applyHighlight();
+}
+
+// ── Tooltip ──
+let tooltipNode = null;
+function updateTooltip(event) {
+  const tooltip = document.getElementById('tooltip');
+  if (!tooltipNode) {
+    tooltip.style.opacity = '0';
+    return;
+  }
+  const node = tooltipNode;
+  const color = COLORS[node.subcat] || DEFAULT_COLOR;
+  const icon = ['运动表现产品','三叶草产品','轻运动产品'].includes(node.category) ? '📦' : '🏷️';
+  tooltip.innerHTML = `
+    <div class="tt-title" style="color:${color}">${icon} ${node.title}</div>
+    <div class="tt-meta">${node.subcat} · ${node.category}</div>
+    ${node.summary ? `<div class="tt-summary">${node.summary}</div>` : ''}
+    ${node.tags?.length ? `<div class="tt-tags">${node.tags.slice(0,5).map(t=>`<span class="tt-tag">${t}</span>`).join('')}</div>` : ''}
+  `;
+
+  // Project 3D to screen
+  const pos = new THREE.Vector3(node._x, node._y, node._z);
+  pos.project(camera);
+  const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
+  const y = (-pos.y * 0.5 + 0.5) * window.innerHeight;
+  tooltip.style.left = (x + 20) + 'px';
+  tooltip.style.top = (y - 10) + 'px';
+  tooltip.style.opacity = '1';
+}
+
+// ── Search ──
+function searchNodes(query) {
+  const q = query.toLowerCase().trim();
+  const color = new THREE.Color();
+  const dummy = new THREE.Object3D();
+
+  function resetIM(im, nodeList) {
+    for (let i = 0; i < nodeList.length; i++) {
+      const n = nodeList[i];
+      color.set(nodeColor(n));
+      im.setColorAt(i, color);
+      dummy.scale.setScalar(1);
+      dummy.position.set(n._x, n._y, n._z);
+      dummy.updateMatrix();
+      im.setMatrixAt(i, dummy.matrix);
+    }
+    im.instanceColor.needsUpdate = true;
+    im.instanceMatrix.needsUpdate = true;
+  }
+
+  if (!q) {
+    // ── Clear search: restore all nodes and edges ──
+    if (sphereIM) resetIM(sphereIM, sphereNodes);
+    if (icoIM) resetIM(icoIM, icoNodes);
+    if (edgeSegments) edgeSegments.visible = true;
+    if (edgeParticles) edgeParticles.visible = true;
+    rebuildEdgeGeometry(new Set());
+    rebuildEdgeParticles(new Set());
+    searchBestNode = null;
+    return;
+  }
+
+  const matches = new Set();
+  let bestMatch = null;
+  NODES.forEach(n => {
+    const haystack = (n.title + ' ' + (n.tags||[]).join(' ') + ' ' + n.subcat).toLowerCase();
+    if (haystack.includes(q)) {
+      matches.add(n.id);
+      const isConcept = n.category === '科技' || n.category === '系列';
+      // Concept node whose ID stem matches search exactly = highest priority
+      // (e.g. "adizero" → 系列/adizero, not 系列/0系列adizero)
+      if (isConcept && n.id.split('/').pop().toLowerCase() === q) {
+        if (!bestMatch || bestMatch.id.split('/').pop().toLowerCase() !== q) {
+          bestMatch = n;
+        }
+      }
+      // Concept node with exact title match = second priority
+      if (!bestMatch && isConcept && n.title.toLowerCase() === q) {
+        bestMatch = n;
+      }
+    }
+  });
+  // Fallback 1: first concept node that matches
+  if (!bestMatch) {
+    for (const n of NODES) {
+      if (matches.has(n.id) && (n.category === '科技' || n.category === '系列')) {
+        bestMatch = n;
+        break;
+      }
+    }
+  }
+  // Fallback 2: any node with exact title match
+  if (!bestMatch) {
+    for (const n of NODES) {
+      if (matches.has(n.id) && n.title.toLowerCase() === q) {
+        bestMatch = n;
+        break;
+      }
+    }
+  }
+
+  // Fly camera to best match
+  if (bestMatch) {
+    searchBestNode = bestMatch;
+    const pos = new THREE.Vector3(bestMatch._x, bestMatch._y, bestMatch._z);
+    const dir = camera.position.clone().sub(pos).normalize();
+    const toCamPos = pos.clone().add(dir.multiplyScalar(8));
+    camAnim = {
+      fromTarget: controls.target.clone(),
+      toTarget: pos,
+      fromCamPos: camera.position.clone(),
+      toCamPos: toCamPos,
+      startTime: performance.now(),
+      duration: 600
+    };
+  } else {
+    searchBestNode = null;
+  }
+
+  function filterIM(im, nodeList) {
+    for (let i = 0; i < nodeList.length; i++) {
+      const n = nodeList[i];
+      if (matches.has(n.id)) {
+        // Matching: normal full color, scale=1
+        color.set(nodeColor(n));
+        dummy.scale.setScalar(1);
+        dummy.position.set(n._x, n._y, n._z);
+        dummy.updateMatrix();
+        im.setMatrixAt(i, dummy.matrix);
+        im.setColorAt(i, color);
+      } else {
+        // Non-matching: HIDE (scale=0)
+        dummy.scale.setScalar(0);
+        dummy.updateMatrix();
+        im.setMatrixAt(i, dummy.matrix);
+      }
+    }
+    im.instanceColor.needsUpdate = true;
+    im.instanceMatrix.needsUpdate = true;
+  }
+  if (sphereIM) filterIM(sphereIM, sphereNodes);
+  if (icoIM) filterIM(icoIM, icoNodes);
+
+  // Hide edges and particles during search — they're noise
+  if (edgeSegments) edgeSegments.visible = false;
+  if (edgeParticles) edgeParticles.visible = false;
+}
+
+// ── Mouse events ──
+function getIntersections(event) {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const targets = [];
+  if (sphereIM) targets.push(sphereIM);
+  if (icoIM) targets.push(icoIM);
+  return raycaster.intersectObjects(targets);
+}
+
+function onMouseMove(event) {
+  const intersects = getIntersections(event);
+  if (intersects.length > 0) {
+    const obj = intersects[0].object;
+    const instId = intersects[0].instanceId;
+    if (instId !== undefined) {
+      const node = obj === sphereIM ? sphereNodes[instId] : icoNodes[instId];
+      if (node) {
+        tooltipNode = node;
+        hoveredId = node.id;
+        document.body.style.cursor = 'pointer';
+        updateTooltip(event);
+        return;
+      }
+    }
+  }
+  tooltipNode = null;
+  hoveredId = null;
+  document.body.style.cursor = '';
+  updateTooltip(event);
+}
+
+function onClick(event) {
+  const intersects = getIntersections(event);
+  if (intersects.length > 0) {
+    const obj = intersects[0].object;
+    const instId = intersects[0].instanceId;
+    if (instId !== undefined) {
+      const node = obj === sphereIM ? sphereNodes[instId] : icoNodes[instId];
+      if (node) {
+        if (selectedId === node.id) {
+          closePanel();
+        } else {
+          // Clear search when clicking a node during search
+          const si = document.getElementById('search-input');
+          if (si.value) { si.value = ''; searchNodes(''); }
+          selectedId = node.id;
+          controls.autoRotate = false;
+          applyHighlight();
+          const pos = new THREE.Vector3(node._x, node._y, node._z);
+          const dir = camera.position.clone().sub(pos).normalize();
+          const toCamPos = pos.clone().add(dir.multiplyScalar(8));
+          camAnim = {
+            fromTarget: controls.target.clone(),
+            toTarget: pos,
+            fromCamPos: camera.position.clone(),
+            toCamPos: toCamPos,
+            startTime: performance.now(),
+            duration: 800
+          };
+          showDetail(node);
+        }
+        return;
+      }
+    }
+  }
+  if (selectedId) closePanel();
+}
+
+// ── Resize ──
+function onResize() {
+  const w = container.clientWidth, h = container.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+  composer.setSize(w, h);
+}
+
+// ── MAIN ──
+async function init() {
+  // Wait for config to load (colors/clusters from /api/config)
+  while (Object.keys(COLORS).length === 0) {
+    await new Promise(r => setTimeout(r, 100));
+  }
+
+  // Load data
+  let DATA;
+  try {
+    const resp = await fetch('graph-data.json?' + Date.now());
+    DATA = await resp.json();
+  } catch(e) {
+    document.body.innerHTML = '<div style="color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;font-size:18px">❌ 无法加载 graph-data.json<br><small>请确保通过 HTTP 服务器打开此页面（非 file://）</small></div>';
+    return;
+  }
+
+  NODES = DATA.nodes;
+  LINKS = DATA.links;
+  NODES.forEach(n => { if (!n.subcat) n.subcat = n.brand || '其他'; });
+
+  // Ensure positions exist (fallback for uncooked data)
+  NODES.forEach(n => {
+    if (n._x === undefined) { n._x = (Math.random() - 0.5) * 10; }
+    if (n._y === undefined) { n._y = (Math.random() - 0.5) * 8; }
+    if (n._z === undefined) { n._z = 0; }
+  });
+
+  console.log(`🚀 3D Knowledge Graph — ${NODES.length} nodes, ${LINKS.length} links (InstancedMesh, zero-physics)`);
+
+  // ── Group nodes by geometry type ──
+  sphereNodes = NODES.filter(n => geomType(n) === 'sphere');
+  icoNodes = NODES.filter(n => geomType(n) === 'ico');
+
+  // ── Build node lookup maps ──
+  nodeMapByType = { sphere: {}, ico: {} };
+  sphereNodes.forEach((n, i) => { nodeMapByType.sphere[n.id] = i; });
+  icoNodes.forEach((n, i) => { nodeMapByType.ico[n.id] = i; });
+
+  // ── Create InstancedMesh: Spheres (products) ──
+  if (sphereNodes.length > 0) {
+    const sphereGeo = new THREE.SphereGeometry(0.18, 24, 24);
+    const sphereMat = new THREE.MeshStandardMaterial({
+      roughness: 0.3, metalness: 0.1, emissiveIntensity: 0.6
+    });
+    sphereIM = new THREE.InstancedMesh(sphereGeo, sphereMat, sphereNodes.length);
+    sphereIM.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+
+    const dummy = new THREE.Object3D();
+    const color = new THREE.Color();
+    for (let i = 0; i < sphereNodes.length; i++) {
+      const n = sphereNodes[i];
+      dummy.position.set(n._x, n._y, n._z);
+      dummy.scale.setScalar(1);
+      dummy.updateMatrix();
+      sphereIM.setMatrixAt(i, dummy.matrix);
+      color.set(nodeColor(n));
+      sphereIM.setColorAt(i, color);
+    }
+    sphereIM.instanceMatrix.needsUpdate = true;
+    sphereIM.instanceColor.needsUpdate = true;
+    scene.add(sphereIM);
+  }
+
+  // ── Create InstancedMesh: Icosahedrons (concepts) ──
+  if (icoNodes.length > 0) {
+    const icoGeo = new THREE.IcosahedronGeometry(0.16, 1);
+    const icoMat = new THREE.MeshStandardMaterial({
+      roughness: 0.25, metalness: 0.15, emissiveIntensity: 0.5, flatShading: true
+    });
+    icoIM = new THREE.InstancedMesh(icoGeo, icoMat, icoNodes.length);
+    icoIM.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+
+    const dummy = new THREE.Object3D();
+    const color = new THREE.Color();
+    for (let i = 0; i < icoNodes.length; i++) {
+      const n = icoNodes[i];
+      dummy.position.set(n._x, n._y, n._z);
+      dummy.scale.setScalar(1);
+      dummy.updateMatrix();
+      icoIM.setMatrixAt(i, dummy.matrix);
+      color.set(nodeColor(n));
+      icoIM.setColorAt(i, color);
+    }
+    icoIM.instanceMatrix.needsUpdate = true;
+    icoIM.instanceColor.needsUpdate = true;
+    scene.add(icoIM);
+  }
+
+  // ── Create edges as single LineSegments ──
+  // Node lookup for all IDs
+  const nodeById = {};
+  NODES.forEach(n => { nodeById[n.id] = n; });
+
+  const validLinks = [];
+  for (const link of LINKS) {
+    const src = nodeById[link.source.id || link.source];
+    const tgt = nodeById[link.target.id || link.target];
+    if (src && tgt && src._x !== undefined && tgt._x !== undefined) {
+      validLinks.push({ src, tgt });
+    }
+  }
+  allValidLinks = validLinks;  // save for highlight rebuilds
+  _visibleLinks = validLinks;  // used by particle animation
+
+  if (validLinks.length > 0) {
+    const edgePositions = new Float32Array(validLinks.length * 6); // 2 verts × 3
+    const edgeColors = new Float32Array(validLinks.length * 6);
+    const bc = new THREE.Color();
+
+    for (let i = 0; i < validLinks.length; i++) {
+      const { src, tgt } = validLinks[i];
+      const pi = i * 6;
+      edgePositions[pi] = src._x; edgePositions[pi+1] = src._y; edgePositions[pi+2] = src._z;
+      edgePositions[pi+3] = tgt._x; edgePositions[pi+4] = tgt._y; edgePositions[pi+5] = tgt._z;
+      bc.set(nodeColor(src));
+      edgeColors[pi] = bc.r; edgeColors[pi+1] = bc.g; edgeColors[pi+2] = bc.b;
+      edgeColors[pi+3] = bc.r; edgeColors[pi+4] = bc.g; edgeColors[pi+5] = bc.b;
+    }
+
+    const edgeGeo = new THREE.BufferGeometry();
+    edgeGeo.setAttribute('position', new THREE.BufferAttribute(edgePositions, 3));
+    edgeGeo.setAttribute('color', new THREE.BufferAttribute(edgeColors, 3));
+    const edgeMat = new THREE.LineBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.18,
+      depthWrite: false,
+    });
+    edgeSegments = new THREE.LineSegments(edgeGeo, edgeMat);
+    scene.add(edgeSegments);
+
+    // ── Edge flow particles ──
+    const partCount = validLinks.length * 3;
+    const partPos = new Float32Array(partCount * 3);
+    const partGeo = new THREE.BufferGeometry();
+    partGeo.setAttribute('position', new THREE.BufferAttribute(partPos, 3));
+    const partMat = new THREE.PointsMaterial({
+      color: '#ffffff', size: 0.06, transparent: true, opacity: 0.5,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    edgeParticles = new THREE.Points(partGeo, partMat);
+
+    particleData = [];
+    for (let i = 0; i < validLinks.length; i++) {
+      for (let p = 0; p < 3; p++) {
+        particleData.push({
+          edgeIdx: i,
+          t: Math.random(),
+          speed: 0.001 + Math.random() * 0.004,
+        });
+      }
+    }
+    scene.add(edgeParticles);
+  }
+
+  // ── Legend & stats ──
+  const clusterSet = new Map();
+  NODES.forEach(n => {
+    if (!clusterSet.has(n.subcat)) clusterSet.set(n.subcat, COLORS[n.subcat] || DEFAULT_COLOR);
+  });
+  buildLegend(Array.from(clusterSet.entries()));
+  document.getElementById('stat-nodes').textContent = NODES.length;
+  document.getElementById('stat-links').textContent = LINKS.length;
+  document.getElementById('stat-clusters').textContent = clusterSet.size;
+
+  // ── Event listeners ──
+  window.addEventListener('resize', onResize);
+  window.addEventListener('mousemove', onMouseMove, {passive:true});
+  window.addEventListener('click', onClick);
+  document.getElementById('detail-panel').addEventListener('click', (e) => e.stopPropagation());
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && selectedId) closePanel();
+  });
+  document.getElementById('search-input').addEventListener('input', (e) => {
+    if (selectedId) closePanel();
+    searchNodes(e.target.value);
+  });
+  document.getElementById('reset-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (selectedId) closePanel();
+    controls.autoRotate = true;
+    camAnim = {
+      fromTarget: controls.target.clone(),
+      toTarget: new THREE.Vector3(0,0,0),
+      fromCamPos: camera.position.clone(),
+      toCamPos: new THREE.Vector3(30,5,0),
+      startTime: performance.now(),
+      duration: 800
+    };
+  });
+
+  // ── Animation loop ──
+  function animate(now) {
+    requestAnimationFrame(animate);
+
+    // Camera fly animation
+    if (camAnim) {
+      const elapsed = now - camAnim.startTime;
+      const t = Math.min(elapsed / camAnim.duration, 1.0);
+      const ease = t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
+      controls.target.lerpVectors(camAnim.fromTarget, camAnim.toTarget, ease);
+      camera.position.lerpVectors(camAnim.fromCamPos, camAnim.toCamPos, ease);
+      if (t >= 1.0) camAnim = null;
+    }
+
+    controls.update();
+
+    // Pulse the best-match search node
+    if (searchBestNode) {
+      const pulse = 1 + 0.35 * Math.sin(now * 0.008);
+      updateNodeScale(searchBestNode, pulse);
+    }
+
+    // Update particles
+    if (edgeParticles && _visibleLinks && _visibleLinks.length > 0) {
+      const posArr = edgeParticles.geometry.attributes.position.array;
+      for (let i = 0; i < particleData.length; i++) {
+        const pd = particleData[i];
+        const link = _visibleLinks[pd.edgeIdx];
+        if (!link) continue;
+        pd.t += pd.speed;
+        if (pd.t > 1) pd.t -= 1;
+        const pi = i * 3;
+        posArr[pi]   = link.src._x + (link.tgt._x - link.src._x) * pd.t;
+        posArr[pi+1] = link.src._y + (link.tgt._y - link.src._y) * pd.t;
+        posArr[pi+2] = link.src._z + (link.tgt._z - link.src._z) * pd.t;
+      }
+      edgeParticles.geometry.attributes.position.needsUpdate = true;
+    }
+
+    // Starfield
+    stars.rotation.y += 0.0001;
+
+    // Tooltip
+    if (tooltipNode) updateTooltip({});
+
+    // Render
+    composer.render();
+  }
+
+  requestAnimationFrame(animate);
+
+  // Auto-refresh
+  setInterval(async () => {
+    try {
+      const resp = await fetch('graph-data.json?' + Date.now());
+      const newData = await resp.json();
+      if (newData.nodes.length !== NODES.length || newData.links.length !== LINKS.length) {
+        console.log('Data updated — reloading page');
+        location.reload();
+      }
+    } catch(e) {}
+  }, 120000);
+
+  console.log(`✅ Ready — ${sphereNodes.length} spheres + ${icoNodes.length} icosahedrons, ${validLinks.length} edges (InstancedMesh, frozen physics)`);
+}
+
+init();
+</script>
+</body>
+</html>

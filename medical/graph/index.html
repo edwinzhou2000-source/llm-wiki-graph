@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>医疗知识图谱 Demo · 可视化</title>
+<script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+<style>
+  :root {
+    --bg: #0c1220;
+    --panel: rgba(16, 24, 40, 0.92);
+    --line: rgba(148, 163, 184, 0.18);
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "SF Pro Text", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: radial-gradient(1200px 600px at 10% -10%, #1e3a5f 0%, transparent 55%),
+                radial-gradient(900px 500px at 90% 0%, #312e81 0%, transparent 50%),
+                var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+  }
+  #app { display: grid; grid-template-columns: 280px 1fr; height: 100vh; }
+  aside {
+    background: var(--panel);
+    border-right: 1px solid var(--line);
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+  }
+  h1 { font-size: 16px; font-weight: 650; letter-spacing: 0.02em; }
+  .sub { font-size: 12px; color: var(--muted); line-height: 1.5; margin-top: 6px; }
+  .section-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .demos { display: flex; flex-direction: column; gap: 6px; }
+  button.demo {
+    text-align: left;
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: border-color .15s, background .15s;
+  }
+  button.demo:hover { border-color: rgba(56, 189, 248, 0.45); background: rgba(56, 189, 248, 0.08); }
+  button.demo.active {
+    border-color: rgba(56, 189, 248, 0.7);
+    background: rgba(56, 189, 248, 0.14);
+    color: #e0f2fe;
+  }
+  .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+  .leg { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  main { position: relative; }
+  #graph { width: 100%; height: 100%; }
+  #status {
+    position: absolute;
+    left: 20px;
+    bottom: 20px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--muted);
+    backdrop-filter: blur(10px);
+  }
+  #status strong { color: var(--text); font-weight: 600; }
+  #hint {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    font-size: 12px;
+    color: var(--muted);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 8px 12px;
+  }
+  .err { color: #fca5a5; }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside>
+    <div>
+      <h1>医疗知识图谱 Demo</h1>
+      <p class="sub">Phase 3 可视化。左侧切换演示查询，右侧拖拽节点看多跳关系。</p>
+    </div>
+    <div>
+      <div class="section-label">演示查询</div>
+      <div class="demos" id="demos"></div>
+    </div>
+    <div>
+      <div class="section-label">节点类型</div>
+      <div class="legend" id="legend"></div>
+    </div>
+  </aside>
+  <main>
+    <div id="graph"></div>
+    <div id="hint">拖拽 · 滚轮缩放 · 点节点看标签</div>
+    <div id="status">加载中…</div>
+  </main>
+</div>
+<script>
+const COLORS = {
+  Patient: "#3b82f6",
+  Drug: "#ef4444",
+  Device: "#8b5cf6",
+  Condition: "#f59e0b",
+  Record: "#10b981",
+  Report: "#06b6d4",
+  Procedure: "#ec4899",
+  Product: "#38bdf8",
+  Series: "#4f46e5",
+  TechPlatform: "#a855f7",
+};
+
+const legend = document.getElementById("legend");
+Object.entries(COLORS).forEach(([label, color]) => {
+  const el = document.createElement("div");
+  el.className = "leg";
+  el.innerHTML = `<span class="dot" style="background:${color}"></span>${label}`;
+  legend.appendChild(el);
+});
+
+const demosEl = document.getElementById("demos");
+const statusEl = document.getElementById("status");
+let network = null;
+let activeDemo = "full";
+
+async function loadDemos() {
+  const res = await fetch("/api/demos");
+  const data = await res.json();
+  demosEl.innerHTML = "";
+  data.demos.forEach((d) => {
+    const btn = document.createElement("button");
+    btn.className = "demo" + (d.id === activeDemo ? " active" : "");
+    btn.textContent = d.title;
+    btn.dataset.id = d.id;
+    btn.onclick = () => {
+      activeDemo = d.id;
+      [...demosEl.querySelectorAll("button")].forEach((b) =>
+        b.classList.toggle("active", b.dataset.id === activeDemo)
+      );
+      loadGraph(activeDemo);
+    };
+    demosEl.appendChild(btn);
+  });
+}
+
+async function loadGraph(demoId) {
+  statusEl.textContent = "查询中…";
+  statusEl.classList.remove("err");
+  try {
+    const res = await fetch(`/api/graph?demo=${encodeURIComponent(demoId)}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    const nodes = new vis.DataSet(
+      data.nodes.map((n) => ({
+        id: n.id,
+        label: n.label,
+        title: n.title,
+        color: {
+          background: n.color,
+          border: "#0f172a",
+          highlight: { background: n.color, border: "#f8fafc" },
+        },
+        font: { color: "#f8fafc", size: 14 },
+        shape: "dot",
+        size: n.group === "Patient" ? 22 : 16,
+      }))
+    );
+    const edges = new vis.DataSet(
+      data.edges.map((e) => ({
+        id: e.id,
+        from: e.from,
+        to: e.to,
+        label: e.label,
+        arrows: "to",
+        color: { color: "rgba(148,163,184,0.55)", highlight: "#38bdf8" },
+        font: { color: "#94a3b8", size: 10, strokeWidth: 0, align: "middle" },
+        smooth: { type: "continuous" },
+      }))
+    );
+
+    const container = document.getElementById("graph");
+    if (network) network.destroy();
+    network = new vis.Network(
+      container,
+      { nodes, edges },
+      {
+        physics: {
+          enabled: true,
+          barnesHut: {
+            gravitationalConstant: -2800,
+            springLength: 120,
+            springConstant: 0.04,
+          },
+          stabilization: { iterations: 80 },
+        },
+        interaction: { hover: true, tooltipDelay: 80 },
+        edges: { width: 1.2 },
+      }
+    );
+
+    statusEl.innerHTML = `<strong>${data.title}</strong> · ${data.nodes.length} 节点 · ${data.edges.length} 边`;
+  } catch (err) {
+    statusEl.classList.add("err");
+    statusEl.textContent = "加载失败: " + err.message;
+  }
+}
+
+loadDemos().then(() => loadGraph(activeDemo));
+</script>
+</body>
+</html>

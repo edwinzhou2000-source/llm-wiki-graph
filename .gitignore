@@ -1,0 +1,38 @@
+# Python / Node
+**/.venv/
+**/__pycache__/
+*.pyc
+**/node_modules/
+medical/node_modules
+
+# OS
+.DS_Store
+**/.DS_Store
+
+# Secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# adidas 产品 Wiki 快照（不随仓库公开；本地用 scripts/refresh_wiki_snapshot.sh）
+adidas/wiki/
+
+# 运行时写入 / 上传
+**/_uploads/
+**/_accepted/
+**/_backups/
+**/_proposals/
+**/.ingest-queue.json
+**/.ingest-status.json
+**/.ingest-lock.json
+**/.upload-history.json
+
+# medical 里误放的通用版上传原文（adidas 产品资料）
+medical/raw/
+
+# 本地生成报告
+adidas/_meta/benchmark_reports/
+**/last_rebuild.log

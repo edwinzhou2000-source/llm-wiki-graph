@@ -1,0 +1,175 @@
+# =============================================================================
+# LLM-WIKI GRAPH KB — adidas 产品知识库（Graph 副本）
+# =============================================================================
+# 本目录是「类型化关系图」版本：从 adidas 产品页 frontmatter 确定性派生类型化边
+# （不是 medical 的「一事一页」边页）。边 = frontmatter 字段，图 = 派生检索索引。
+# 源内容只读引用 source_kb_root，绝不回写源 KB。
+# =============================================================================
+
+brand:
+  name: "adidas"
+  display_name: "adidas 产品知识库 (Graph 副本)"
+  public_name: "llm-wiki-graph adidas"
+
+paths:
+  # 本 graph 副本自身的根目录（放配置、文档、生成的关系索引）
+  kb_root: "/Users/edwin.zhou/Documents/LLM-WIKI-GRAPH/adidas"
+  # ★ 物理自包含：Wiki 快照在本仓 wiki/（不再外链通用版 KB；绝不读写 medical）
+  source_kb_root: "/Users/edwin.zhou/Documents/LLM-WIKI-GRAPH/adidas/wiki"
+  # 本副本不使用 gbrain（同 medical：本地全文检索替代）；gbrain_home 仅作遗留字段
+  gbrain_home: "~/.gbrain-llm-wiki"
+  env_file: "~/.hermes/.env"
+
+# 品类 + role（沿用 V2 通用版 role 驱动；adidas 无 clinical/bridge 层）
+categories:
+  - id: performance
+    name: "运动表现产品"
+    color: "#FF6B6B"
+    dir: "运动表现产品"
+    role: product
+    subcategories:
+      - { name: "鞋", dir: "鞋" }
+      - { name: "服装", dir: "服装" }
+      - { name: "配件", dir: "配件" }
+      - { name: "待分类", dir: "待分类" }
+
+  - id: originals
+    name: "三叶草产品"
+    color: "#FFB347"
+    dir: "三叶草产品"
+    role: product
+    subcategories:
+      - { name: "鞋", dir: "鞋" }
+      - { name: "服装", dir: "服装" }
+      - { name: "配件", dir: "配件" }
+      - { name: "待分类", dir: "待分类" }
+
+  - id: sportswear
+    name: "轻运动产品"
+    color: "#4ECDC4"
+    dir: "轻运动产品"
+    role: product
+    subcategories:
+      - { name: "鞋", dir: "鞋" }
+      - { name: "服装", dir: "服装" }
+      - { name: "配件", dir: "配件" }
+      - { name: "待分类", dir: "待分类" }
+
+  - id: technology
+    name: "科技"
+    color: "#9B59B6"
+    dir: "科技"
+    role: concept
+
+  - id: series
+    name: "系列"
+    color: "#4A4AFF"
+    dir: "系列"
+    role: concept
+
+taxonomy:
+  dimensions: [type, series, product_type, position, attributes]
+
+  rules:
+    entity_link_target: "concepts_only"
+    wikilink_section: "## 相关概念"
+
+  non_tech_blacklist: []
+
+  valid_values:
+    type: ["运动表现产品", "三叶草产品", "轻运动产品", "科技", "系列"]
+    series: []
+    product_type: ["鞋", "服装", "配件"]
+    position: ["竞速", "训练", "缓震", "休闲", "日常", "户外"]
+    attributes: []
+
+# ── 类型化关系（边）schema —— 边从 frontmatter 字段派生，不单独开页 ──
+# 实现见 graph/wiki_graph_extract.py 的 EDGE_RULES
+graph_schema:
+  relations:
+    IN_SERIES:
+      zh: "所属系列"
+      from: Product
+      to: Series
+      source_field: "product.series"
+    USES_TECH:
+      zh: "采用科技"
+      from: Product
+      to: Tech
+      source_field: "product.tags(科技/*) + attributes∩科技"
+    IN_CATEGORY:
+      zh: "归属品类"
+      from: Product
+      to: Category
+      source_field: "product 文件顶层目录"
+    HAS_TYPE:
+      zh: "产品类型"
+      from: Product
+      to: ProductType
+      source_field: "product.type"
+    SERIES_USES_TECH:
+      zh: "系列科技"
+      from: Series
+      to: Tech
+      source_field: "系列页·核心技术"
+
+# 图谱路由辅助（行业通用问法标记）
+routing:
+  cross_kb_markers: ["库里", "知识库", "库内", "库中"]
+
+server:
+  port: 8780
+  cookie_name: "llm_wiki_graph_adidas_auth"
+  cookie_days: 30
+  rate_limit_per_minute: 5
+  rate_limit_lockout_after: 10
+  rate_limit_lockout_minutes: 15
+  qa_rate_limit_per_minute: 10
+  qa:
+    context_top_pages: 8
+    full_text_pages: 6
+    summary_pages: 2
+    full_text_max_chars: 10000
+    summary_max_chars: 8000
+    max_tokens: 2500
+    temperature: 0.5
+    timeout_seconds: 90
+
+upload:
+  allowed_extensions: [".pdf", ".docx", ".doc", ".txt", ".md", ".jpg", ".jpeg", ".png"]
+  max_file_size_mb: 50
+  modes:
+    - { id: "review", label: "🔍 上传并审核", description: "AI 处理 → 生成提案 → 审核 → 采纳" }
+    - { id: "direct", label: "🤖 AI全自动收录", description: "AI 直接写入 → 即时可搜索" }
+
+rewrite:
+  confidence_auto: 0.75
+  max_chars: 500
+  enabled: true
+
+theme:
+  bgDark:       "0A0A14"
+  bgPanel:      "111122"
+  bgCard:       "1A1A3A"
+  accent:       "4A4AFF"
+  accentPink:   "FF6B6B"
+  accentOrange: "FFB347"
+  accentTeal:   "4ECDC4"
+  accentGreen:  "6BCB77"
+  accentPurple: "9B59B6"
+  accentYellow: "FFD700"
+  textPrimary:  "E0E0E0"
+  textSecondary: "8899AA"
+  textMuted:    "556677"
+  white:        "FFFFFF"
+  darkLine:     "1E1E3A"
+
+maintenance:
+  l1_auto_fill:
+    cron_schedule: "0 */2 * * *"
+    pages_per_run: 20
+  l2_consistency_check:
+    output_file: "_meta/_issues.md"
+  l3_improve:
+    proposals_dir: "_proposals"
+    backups_dir: "_backups"

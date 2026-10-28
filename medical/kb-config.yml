@@ -1,0 +1,194 @@
+# =============================================================================
+# LLM-WIKI KB — fushun 医药知识库配置
+# =============================================================================
+# V2 通用版 — 品类/概念/标签全部通过 role 字段驱动，无需改代码。
+# 迁移到其他行业：改本文件 → bash setup.sh → 完成。
+# =============================================================================
+
+brand:
+  name: "fushun"
+  display_name: "fushun 医药知识库 (Graph 副本)"
+  public_name: "llm-wiki-graph medical"
+
+paths:
+  kb_root: "/Users/edwin.zhou/Documents/LLM-WIKI-GRAPH/medical"
+  # 本副本已改用 local_wiki_search；gbrain_home 仅作遗留字段保留
+  gbrain_home: "~/.gbrain-llm-wiki-v2"
+  env_file: "~/.hermes/.env"
+
+categories:
+  - id: prescription
+    name: "处方药"
+    color: "#FF6B6B"
+    dir: "处方药"
+    role: product
+    subcategories:
+      - name: "心血管"
+        dir: "心血管"
+      - name: "抗感染"
+        dir: "抗感染"
+      - name: "肿瘤"
+        dir: "肿瘤"
+      - name: "中枢神经"
+        dir: "中枢神经"
+      - name: "消化代谢"
+        dir: "消化代谢"
+
+  - id: otc
+    name: "OTC药品"
+    color: "#FFB347"
+    dir: "OTC药品"
+    role: product
+    subcategories:
+      - name: "感冒止咳"
+        dir: "感冒止咳"
+      - name: "消化肠胃"
+        dir: "消化肠胃"
+      - name: "皮肤外用药"
+        dir: "皮肤外用药"
+      - name: "维生素保健品"
+        dir: "维生素保健品"
+
+  - id: device
+    name: "医疗器械"
+    color: "#4ECDC4"
+    dir: "医疗器械"
+    role: product
+    subcategories:
+      - name: "诊断设备"
+        dir: "诊断设备"
+      - name: "耗材"
+        dir: "耗材"
+
+  - id: technology
+    name: "技术平台"
+    color: "#9B59B6"
+    dir: "技术平台"
+    role: concept
+
+  - id: series
+    name: "产品系列"
+    color: "#4A4AFF"
+    dir: "产品系列"
+    role: concept
+
+  - id: clinical_case
+    name: "临床病例"
+    color: "#F472B6"
+    dir: "临床病例"
+    role: clinical
+
+  - id: clinical_safety
+    name: "用药安全"
+    color: "#FB923C"
+    dir: "用药安全"
+    role: clinical
+
+  - id: clinical_fact
+    name: "临床事实"
+    color: "#F9A8D4"
+    dir: "临床事实"
+    role: clinical
+
+  - id: condition
+    name: "疾病"
+    color: "#34D399"
+    dir: "疾病"
+    role: bridge
+
+  - id: ingredient
+    name: "成分"
+    color: "#60A5FA"
+    dir: "成分"
+    role: bridge
+
+  - id: device_ontology
+    name: "设备"
+    color: "#A78BFA"
+    dir: "设备"
+    role: bridge
+
+  - id: product_bridge
+    name: "产品桥接"
+    color: "#FCD34D"
+    dir: "产品桥接"
+    role: bridge
+
+taxonomy:
+  dimensions: [type, series, dosage_form, indication, tech, entity_kind]
+
+  rules:
+    entity_link_target: "concepts_and_bridge"
+    wikilink_section: "## 相关概念"
+
+  non_tech_blacklist: []   # 医药行业暂无需黑名单
+
+  valid_values:
+    type: ["处方药", "OTC药品", "医疗器械", "技术平台", "产品系列", "临床病例", "用药安全", "临床事实", "疾病", "成分", "设备", "产品桥接", "诊断", "处方用药", "过敏", "开具检查", "施行手术", "检查提示", "使用设备", "用药禁忌", "药物相互作用", "设备互斥", "治疗", "含有成分", "适应症", "所属系列", "采用技术", "诊断事实", "处方事实", "过敏事实", "医嘱检查事实", "医嘱手术事实", "检查提示事实", "设备使用事实", "治疗关系", "含成分桥接", "适应症桥接", "系列归属桥接", "采用技术桥接", "索引"]
+    series: []
+    dosage_form: ["片剂", "胶囊", "注射液", "口服液", "颗粒剂", "软膏", "贴剂", "喷雾剂", "外用"]
+    indication: ["心血管", "抗感染", "肿瘤", "中枢神经", "消化代谢", "呼吸系统", "皮肤科", "营养补充", "骨骼关节"]
+    tech: []
+    entity_kind: ["病例", "规则", "疾病", "成分", "设备", "关系事实"]
+
+# 图谱路由辅助（行业通用问法标记；实体名仍来自 graph-entity-map.yml）
+routing:
+  cross_kb_markers: ["库里", "知识库", "库内", "库中"]
+
+server:
+  port: 8770
+  cookie_name: "llm_wiki_graph_auth"
+  cookie_days: 30
+  rate_limit_per_minute: 5
+  rate_limit_lockout_after: 10
+  rate_limit_lockout_minutes: 15
+  qa_rate_limit_per_minute: 10
+  qa:
+    context_top_pages: 8
+    full_text_pages: 6
+    summary_pages: 2
+    full_text_max_chars: 10000
+    summary_max_chars: 8000
+    max_tokens: 2500
+    temperature: 0.5
+    timeout_seconds: 90
+
+upload:
+  allowed_extensions: [".pdf", ".docx", ".doc", ".txt", ".md", ".jpg", ".jpeg", ".png"]
+  max_file_size_mb: 50
+  modes:
+    - { id: "review", label: "🔍 上传并审核", description: "AI 处理 → 生成提案 → 审核 → 采纳" }
+    - { id: "pi", label: "📋 说明书入库（审核）", description: "说明书/PI → 实体+边事实页提案包 → 药师审核" }
+    - { id: "direct", label: "🤖 AI全自动收录", description: "AI 直接写入 → 即时可搜索（勿用于临床边）" }
+
+rewrite:
+  confidence_auto: 0.75
+  max_chars: 500
+  enabled: true
+
+theme:
+  bgDark:       "0A0A14"
+  bgPanel:      "111122"
+  bgCard:       "1A1A3A"
+  accent:       "4A4AFF"
+  accentPink:   "FF6B6B"
+  accentOrange: "FFB347"
+  accentTeal:   "4ECDC4"
+  accentGreen:  "6BCB77"
+  accentPurple: "9B59B6"
+  accentYellow: "FFD700"
+  textPrimary:  "E0E0E0"
+  textSecondary: "8899AA"
+  textMuted:    "556677"
+  white:        "FFFFFF"
+  darkLine:     "1E1E3A"
+
+maintenance:
+  l1_auto_fill:
+    cron_schedule: "0 */2 * * *"
+    pages_per_run: 20
+  l2_consistency_check:
+    output_file: "_meta/_issues.md"
+  l3_improve:
+    proposals_dir: "_proposals"
+    backups_dir: "_backups"

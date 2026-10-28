@@ -1,0 +1,54 @@
+# =====================================================
+# adidas Knowledge Hub — systemd service
+# 放在: /etc/systemd/system/adidas-hub.service
+# 启动: sudo systemctl enable --now adidas-hub
+# 日志: sudo journalctl -u adidas-hub -f
+# =====================================================
+
+[Unit]
+Description=adidas Product Knowledge Hub (gbrain Q&A server)
+After=network.target
+
+[Service]
+Type=simple
+User=deploy
+Group=deploy
+
+# 工作目录
+WorkingDirectory=/home/deploy/adidas-gbrain-v2
+
+# 环境变量 (从 .env.production 加载)
+EnvironmentFile=/home/deploy/adidas-gbrain-v2/deploy/.env.production
+
+# Python 解释器 (推荐用 venv)
+ExecStart=/usr/bin/python3 server.py
+
+# 优雅关闭
+ExecReload=/bin/kill -HUP $MAINPID
+KillSignal=SIGTERM
+TimeoutStopSec=10
+
+# 自动重启
+Restart=on-failure
+RestartSec=5
+
+# 限制 (防资源耗尽)
+LimitNOFILE=65536
+MemoryMax=1G
+CPUQuota=200%
+
+# 安全加固
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/deploy/adidas-gbrain-v2 /home/deploy/.gbrain-adidas-v2 /tmp
+ReadOnlyPaths=/home/deploy/gbrain
+
+# stdout/stderr → journald
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=adidas-hub
+
+[Install]
+WantedBy=multi-user.target
