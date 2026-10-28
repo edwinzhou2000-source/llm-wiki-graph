@@ -1,0 +1,20 @@
+services:
+  neo4j:
+    image: neo4j:5
+    container_name: adidas-graph-neo4j
+    ports:
+      - "7688:7687"      # bolt（宿主 7688 → 容器 7687）
+      - "7475:7474"      # browser
+    environment:
+      - NEO4J_AUTH=neo4j/adidas123
+    volumes:
+      - adidas_neo4j_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  adidas_neo4j_data:

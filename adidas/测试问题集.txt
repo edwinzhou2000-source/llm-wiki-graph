@@ -1,0 +1,35 @@
+# adidas 图谱召回测试问题集（benchmark_query.py 解析）
+# 格式：第二节 L 系列 / 第三节 S 系列（严格模板期望）
+
+第二节 开放问句（L）
+L1-1. 哪些产品用了 boost 科技？
+L1-2. climacool 系列有哪些产品？
+L1-3. 运动表现有哪些产品？
+L1-4. 有哪些跑鞋？
+L1-5. ULTRABOOST 系列用了什么科技？
+L1-6. 三叶草有哪些产品？
+L1-7. 轻运动系列产品有哪些？
+L2-1. 哪些产品搭载了 lightstrike？
+L2-2. 有哪些服装？
+L2-3. boost 和 climacool 有什么区别？
+L3-1. 今天天气怎么样？
+L3-2. 推荐一双舒适通勤的鞋
+
+第三节 严格模板（S）
+S-01. 哪些产品用了 boost 科技？
+S-02. climacool 系列有哪些产品？
+S-03. 运动表现有哪些产品？
+S-04. 有哪些跑鞋？
+S-05. ULTRABOOST 系列用了什么科技？
+S-06. 有哪些配件？
+S-07. 三叶草产品里有哪些系列相关产品？
+S-08. 哪些产品用了 primeknit 科技？
+S-09. 哪些产品采用了 continental 科技？
+S-10. CLIMACOOL 系列有哪些产品？
+S-11. 轻运动有哪些产品？
+S-12. 有哪些板鞋？
+S-13. 哪些产品用了 aeroready？
+S-14. 今天吃什么？
+
+第四节 备注
+期望通道见 benchmark_query.py 内 S_TEMPLATE_EXPECT。

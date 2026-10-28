@@ -1,0 +1,10 @@
+_backups/
+_proposals/
+_meta/
+node_modules/
+raw/
+images/
+logs/
+.ingest-queue.json
+.ingest-status.json
+.upload-history.json

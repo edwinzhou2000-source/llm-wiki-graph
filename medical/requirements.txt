@@ -1,0 +1,4 @@
+neo4j>=5.0,<6.0
+pyyaml
+requests
+jieba
