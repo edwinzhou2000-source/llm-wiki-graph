@@ -21,8 +21,9 @@ sys.path.insert(0, str(KB / "graph"))
 
 from neo4j import GraphDatabase
 
-URI = "bolt://localhost:7687"
-AUTH = ("neo4j", "medical123")
+from neo4j_connect import neo4j_auth  # noqa: E402
+
+URI, AUTH = neo4j_auth()
 
 PREFERRED = [
     "Patient", "Record", "Report", "Procedure", "Drug", "Device",

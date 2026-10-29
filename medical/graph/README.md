@@ -5,8 +5,11 @@
 ## 快速开始
 
 ```bash
+# 0. 本地凭据（勿提交 .env）
+cp .env.example .env   # 填写 NEO4J_AUTH 与 MEDICAL_NEO4J_PASSWORD
+
 # 1. 起 Neo4j
-docker compose up -d
+docker compose --env-file .env up -d
 
 # 2. Python 环境
 python3 -m venv .venv
@@ -24,7 +27,7 @@ python viz_server.py
 # 浏览器打开 http://127.0.0.1:8765
 ```
 
-Neo4j Browser：http://localhost:7474 （`neo4j` / `medical123`）
+Neo4j Browser：http://localhost:7474（用户/密码见本目录 `.env`，勿写入仓库）
 
 ## 文件
 

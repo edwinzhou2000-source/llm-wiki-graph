@@ -27,9 +27,9 @@ from wiki_graph_extract import (  # noqa: E402
     extract,
     path_type_mismatches,
 )
+from neo4j_connect import neo4j_auth  # noqa: E402
 
-URI = "bolt://localhost:7687"
-AUTH = ("neo4j", "medical123")
+URI, AUTH = neo4j_auth()
 
 
 def _edge_key(rel: str, a_label: str, a: str, b_label: str, b: str) -> Tuple:

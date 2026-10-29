@@ -7,7 +7,6 @@
 
 from __future__ import annotations
 
-import os
 import re
 import sys
 from dataclasses import dataclass, field
@@ -20,9 +19,10 @@ KB_ROOT = Path(__file__).resolve().parent
 if str(KB_ROOT / "graph") not in sys.path:
     sys.path.insert(0, str(KB_ROOT / "graph"))
 
-NEO4J_URI = os.environ.get("MEDICAL_NEO4J_URI", "bolt://localhost:7687")
-NEO4J_USER = os.environ.get("MEDICAL_NEO4J_USER", "neo4j")
-NEO4J_PASSWORD = os.environ.get("MEDICAL_NEO4J_PASSWORD", "medical123")
+# Load optional graph/.env then require password (no hardcoded defaults).
+from neo4j_connect import neo4j_auth  # noqa: E402
+
+NEO4J_URI, (NEO4J_USER, NEO4J_PASSWORD) = neo4j_auth()
 
 
 def _load_entity_map() -> tuple[dict[str, str], dict[str, str], set[str]]:

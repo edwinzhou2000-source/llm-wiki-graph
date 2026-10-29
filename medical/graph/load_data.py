@@ -20,9 +20,9 @@ if str(GRAPH_DIR) not in sys.path:
 
 from wiki_graph_extract import extract  # noqa: E402
 import render_wiki_relations as rwr  # noqa: E402
+from neo4j_connect import neo4j_auth  # noqa: E402
 
-URI = "bolt://localhost:7687"
-AUTH = ("neo4j", "medical123")
+URI, AUTH = neo4j_auth()
 
 LABELS = (
     "Patient",

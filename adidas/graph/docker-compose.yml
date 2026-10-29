@@ -6,7 +6,8 @@ services:
       - "7688:7687"      # bolt（宿主 7688 → 容器 7687）
       - "7475:7474"      # browser
     environment:
-      - NEO4J_AUTH=neo4j/adidas123
+      # Set via graph/.env (see .env.example). Do not hardcode passwords in git.
+      - NEO4J_AUTH=${NEO4J_AUTH:?Set NEO4J_AUTH in adidas/graph/.env — see .env.example}
     volumes:
       - adidas_neo4j_data:/data
     restart: unless-stopped
