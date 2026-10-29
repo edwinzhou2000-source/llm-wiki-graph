@@ -50,7 +50,7 @@ flowchart LR
 |------|---------------------------|--------------|---------------|
 | 品牌 / 展示名 | adidas Product Knowledge Hub | adidas 产品知识库 (Graph 副本) | fushun 医药知识库 (Graph 副本) |
 | HTTP 端口 | **8767** | **8780** | **8770** |
-| Neo4j | 无 | bolt **7688** / browser **7475**（`neo4j/<REMOVED>`） | bolt **7687** / browser **7474**（`neo4j/<REMOVED>`） |
+| Neo4j | 无 | bolt **7688** / browser **7475**（凭据见 `adidas/graph/.env`） | bolt **7687** / browser **7474**（凭据见 `medical/graph/.env`） |
 | 检索后端 | **gbrain**（tsvector + pgvector，`~/.gbrain-llm-wiki`） | **Cypher 模板** + jieba FTS 兜底 | **Cypher 多层模板** + jieba FTS |
 | 「图谱」含义 | D3 `graph-data.json`（wikilink 可视化，非图库） | Neo4j 类型化索引 | Neo4j 类型化索引 |
 | 事实源 | 本目录 Markdown（可写） | 本仓 `wiki/` 快照（只读）+ overlay | 本目录 Markdown（含边页） |

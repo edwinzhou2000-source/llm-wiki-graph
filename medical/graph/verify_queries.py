@@ -3,8 +3,9 @@
 
 from neo4j import GraphDatabase
 
-URI = "bolt://localhost:7687"
-AUTH = ("neo4j", "<REMOVED>")
+from neo4j_connect import neo4j_auth
+
+URI, AUTH = neo4j_auth()
 
 QUERIES = [
     (

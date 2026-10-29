@@ -11,7 +11,6 @@ Cypher 使用参数绑定（不用 f-string 拼实体名）。
 
 from __future__ import annotations
 
-import os
 import re
 import sys
 from dataclasses import dataclass, field
@@ -25,9 +24,9 @@ if str(KB_ROOT) not in sys.path:
 from config import SOURCE_KB_ROOT  # noqa: E402
 from graph.wiki_graph_extract import extract, _norm_series  # noqa: E402
 
-NEO4J_URI = os.environ.get("ADIDAS_NEO4J_URI", "bolt://localhost:7688")
-NEO4J_USER = os.environ.get("ADIDAS_NEO4J_USER", "neo4j")
-NEO4J_PASSWORD = os.environ.get("ADIDAS_NEO4J_PASSWORD", "<REMOVED>")
+from graph.neo4j_connect import neo4j_auth  # noqa: E402
+
+NEO4J_URI, (NEO4J_USER, NEO4J_PASSWORD) = neo4j_auth()
 
 # ── Lazy extract + entity indexes (avoid import-time scan when unused) ──
 _EXTRACTED: Optional[dict] = None

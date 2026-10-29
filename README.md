@@ -14,7 +14,7 @@
 
 **包含：** Graph 抽取与灌图代码、Cypher 召回、门户、medical 演示 Wiki（假患者 + 产品/禁忌边页）、架构文档。
 
-**不包含：** adidas 产品 Markdown 快照、`node_modules` / `.venv`、上传附件、API 密钥。Neo4j 凭据仅为本地 demo（`<REMOVED>` / `<REMOVED>`），**非生产**。
+**不包含：** adidas 产品 Markdown 快照、`node_modules` / `.venv`、上传附件、API 密钥、Neo4j 密码。本地 Neo4j 凭据通过各目录 `graph/.env`（见 `graph/.env.example`）配置，**勿提交、勿用于生产**。
 
 ## 快速看懂差异
 
@@ -32,7 +32,8 @@
 # adidas Graph
 cd adidas
 python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-docker compose -f graph/docker-compose.yml up -d
+cp graph/.env.example graph/.env   # 填写 NEO4J_AUTH 与 ADIDAS_NEO4J_PASSWORD
+docker compose -f graph/docker-compose.yml --env-file graph/.env up -d
 # 将 wiki 快照放到 adidas/wiki/ 后再灌图
 python3 graph/load_data.py
 python3 server.py   # http://127.0.0.1:8780/
@@ -40,7 +41,8 @@ python3 server.py   # http://127.0.0.1:8780/
 # medical Graph
 cd ../medical
 python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-docker compose -f graph/docker-compose.yml up -d
+cp graph/.env.example graph/.env   # 填写 NEO4J_AUTH 与 MEDICAL_NEO4J_PASSWORD
+docker compose -f graph/docker-compose.yml --env-file graph/.env up -d
 python3 graph/load_data.py
 python3 server.py   # 默认 http://127.0.0.1:8770/
 ```

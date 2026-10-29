@@ -2,7 +2,7 @@
 
 类型化关系图 + 图优先检索的 adidas 产品知识库副本。边从产品页 frontmatter 派生（非 medical「一事一页」）。图引擎：独立 Neo4j 容器（bolt `7688` / browser `7475`）。
 
-> Demo 凭据 `neo4j/<REMOVED>` — **非生产**。
+> Neo4j 凭据来自 `graph/.env`（见 `graph/.env.example`）— **本地 demo，非生产**。
 >
 > **隔离 B**：Wiki 正文快照在本仓 `wiki/`（`source_kb_root`）；写入仅 `_uploads/_proposals/_accepted/_meta`。绝不读写 medical，也不回写通用版 LLM-Wiki。刷新快照：`scripts/refresh_wiki_snapshot.sh`。
 
@@ -14,8 +14,11 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
+# 0. 本地 Neo4j 凭据（勿提交 .env）
+cp graph/.env.example graph/.env   # 填写 NEO4J_AUTH 与 ADIDAS_NEO4J_PASSWORD
+
 # 1. 独立 Neo4j（勿碰 medical 的 7687/7474）
-docker compose -f graph/docker-compose.yml up -d
+docker compose -f graph/docker-compose.yml --env-file graph/.env up -d
 
 # 2. 灌图（读本仓 wiki/）
 python3 graph/load_data.py

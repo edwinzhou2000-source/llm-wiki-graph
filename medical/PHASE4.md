@@ -44,7 +44,7 @@ Wiki 侧：`临床事实/`、`用药安全/{禁忌,相互作用,…}`、`产品�
 |------|-----|
 | Wiki 副本 | http://127.0.0.1:8770 |
 | 图可视化 | http://127.0.0.1:8765（`python graph/viz_server.py`） |
-| Neo4j Browser | http://localhost:7474（neo4j / <REMOVED>） |
+| Neo4j Browser | http://localhost:7474（凭据见 `graph/.env`） |
 
 ## 启动
 

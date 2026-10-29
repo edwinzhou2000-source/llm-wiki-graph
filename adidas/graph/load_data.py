@@ -2,12 +2,11 @@
 """Load adidas typed graph into Neo4j from Wiki frontmatter extract (idempotent MERGE).
 
 Edges are derived from product frontmatter (not medical 一事一页). See wiki_graph_extract.py.
-Demo credentials only — not for production.
+Credentials come from env / graph/.env — not for production hardcoding.
 """
 
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 
@@ -22,11 +21,10 @@ if str(GRAPH_DIR) not in sys.path:
 
 from wiki_graph_extract import extract  # noqa: E402
 import render_wiki_relations as rwr  # noqa: E402
+from neo4j_connect import neo4j_auth  # noqa: E402
 
-URI = os.environ.get("ADIDAS_NEO4J_URI", "bolt://localhost:7688")
-USER = os.environ.get("ADIDAS_NEO4J_USER", "neo4j")
-PASSWORD = os.environ.get("ADIDAS_NEO4J_PASSWORD", "<REMOVED>")
-AUTH = (USER, PASSWORD)
+URI, AUTH = neo4j_auth()
+USER, PASSWORD = AUTH
 
 LABELS = (
     "Product",

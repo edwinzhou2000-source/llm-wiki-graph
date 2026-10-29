@@ -15,7 +15,7 @@
 
 ## 1. 核心设计决策（已锁定，不要改）
 
-1. **图引擎 = Neo4j，独立容器**（与 medical 完全隔离）。端口 bolt `7688`、browser `7475`，独立 volume，独立凭据 `neo4j/<REMOVED>`。medical 的实例是 `7687/7474`、`<REMOVED>`，两者互不干扰。
+1. **图引擎 = Neo4j，独立容器**（与 medical 完全隔离）。端口 bolt `7688`、browser `7475`，独立 volume，凭据来自 `graph/.env`（`NEO4J_AUTH` / `ADIDAS_NEO4J_*`）。medical 用 `7687/7474` + 自己的 `graph/.env`，两者互不干扰。
 2. **边 = frontmatter 字段，不单独开页**。与 medical 的「一事一页」刻意不同，是本版本核心差异。
 3. **抽取层与引擎无关**：`extract()` 输出 nodes+edges，`load_data.py` 只负责把它灌进 Neo4j。改引擎不影响抽取。
 4. **只读引用源 KB**：`kb-config.yml` 的 `paths.source_kb_root` 指向源 KB；所有扫描/读原文走 `SOURCE_KB_ROOT`，绝无写操作。
@@ -101,7 +101,7 @@ services:
       - "7688:7687"      # bolt（宿主 7688 → 容器 7687）
       - "7475:7474"      # browser
     environment:
-      - NEO4J_AUTH=neo4j/<REMOVED>
+      - NEO4J_AUTH=${NEO4J_AUTH:?Set NEO4J_AUTH in graph/.env}
     volumes:
       - adidas_neo4j_data:/data
     restart: unless-stopped
@@ -113,11 +113,11 @@ services:
 volumes:
   adidas_neo4j_data:
 ```
-启动：`docker compose -f graph/docker-compose.yml up -d`（勿碰 medical 的 `medical-graph-demo` compose）。
+启动：先 `cp graph/.env.example graph/.env` 填本地密码，再 `docker compose -f graph/docker-compose.yml --env-file graph/.env up -d`（勿碰 medical 的 compose）。
 
 ### 5.2 `graph/load_data.py`（extract → Neo4j）
 照抄 medical 的 `graph/load_data.py`（`/Users/edwin.zhou/Documents/LLM-WIKI-GRAPH/medical/graph/load_data.py`），改动：
-- `URI = "bolt://localhost:7688"`，`AUTH = ("neo4j", "<REMOVED>")`
+- `URI, AUTH = neo4j_auth()`（读 `ADIDAS_NEO4J_*` / `graph/.env`，无硬编码密码）
 - `LABELS = ("Product", "Tech", "Series", "Category", "ProductType")`
 - `load_from_wiki` 直接吃 `extract()` 的 nodes/edges（`merge_node`/`merge_rel` 逻辑照抄）
 - `main()` 里先 `render_index()`（可选）再 extract → 清图 → 灌图，打印 nodes/relationships 计数
@@ -125,7 +125,7 @@ volumes:
 
 ### 5.3 `graph_recall.py` 重写为 Cypher 版
 保留现有实体检测（`_mentioned_tech`/`_resolve_series`/`_mentioned_category`/`_mentioned_type`/`_resolve_product`、`ALIAS_MAPS`、`_build_entity_indexes`）与 `GraphRecallResult` dataclass，把执行层从 `TypedGraph` 换成 Neo4j：
-- `NEO4J_URI = os.environ.get("ADIDAS_NEO4J_URI", "bolt://localhost:7688")`，`AUTH = ("neo4j", "<REMOVED>")`
+- `NEO4J_URI, (NEO4J_USER, NEO4J_PASSWORD) = neo4j_auth()`（无硬编码密码）
 - 每个模板输出 Cypher 字符串，`_run_cypher` 用 `neo4j` driver 执行（照抄 medical 的 `_run_cypher`）
 - 模板 Cypher（label 用 adidas 的）：
   - `products_by_tech`：`MATCH (p:Product)-[:USES_TECH]->(t:Tech {name:$tech}) RETURN t.name AS tech, collect(DISTINCT p.name) AS products`

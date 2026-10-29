@@ -10,8 +10,9 @@ from urllib.parse import parse_qs, urlparse
 
 from neo4j import GraphDatabase
 
-URI = "bolt://localhost:7687"
-AUTH = ("neo4j", "<REMOVED>")
+from neo4j_connect import neo4j_auth
+
+URI, AUTH = neo4j_auth()
 HOST, PORT = "127.0.0.1", 8765
 ROOT = Path(__file__).resolve().parent
 
